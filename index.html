@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pinyin Snake Game - เกมงูฝึกศัพท์จีน</title>
+    <title>Pinyin Snake Game</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -14,16 +14,10 @@
             margin: 0;
             padding: 10px;
             touch-action: manipulation;
-        }
-
-        h1 {
-            color: #333;
-            margin: 5px 0;
-            font-size: 24px;
+            user-select: none;
         }
 
         #game-container {
-            position: relative;
             background-color: #fff;
             padding: 15px;
             border-radius: 15px;
@@ -32,10 +26,11 @@
             max-width: 420px;
             width: 100%;
             box-sizing: border-box;
+            position: relative;
         }
 
         #target-word-box {
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
             color: #2c3e50;
             margin-bottom: 10px;
@@ -47,27 +42,58 @@
 
         #target-pinyin {
             color: #e74c3c;
-            font-size: 24px;
+            font-size: 26px;
             display: block;
             margin-top: 5px;
+            letter-spacing: 1px;
         }
 
-        canvas {
-            background-color: #2e3d49;
-            border-radius: 8px;
-            display: block;
+        #board-wrapper {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1 / 1;
             margin: 0 auto;
-            max-width: 100%;
-            height: auto;
         }
+
+        #grid-board {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: repeat(12, 1fr);
+            gap: 1px;
+            background-color: #2e3d49;
+            padding: 2px;
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        .cell {
+            background-color: #34495e;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            color: white;
+            overflow: hidden;
+            word-break: break-all;
+            padding: 1px;
+            text-align: center;
+        }
+
+        .snake-head { background-color: #27ae60 !important; }
+        .snake-body { background-color: #2ecc71 !important; }
+        .apple { background-color: #e74c3c !important; }
 
         #score-board {
             display: flex;
             justify-content: space-between;
-            margin: 10px 0;
+            margin: 12px 0;
             font-size: 16px;
             font-weight: bold;
-            color: #555;
+            color: #34495e;
         }
 
         #controls {
@@ -76,7 +102,7 @@
             grid-template-rows: repeat(3, 60px);
             gap: 10px;
             justify-content: center;
-            margin: 15px 0 5px 0;
+            margin: 10px 0;
         }
 
         .ctrl-btn {
@@ -84,19 +110,18 @@
             color: white;
             border: none;
             border-radius: 50%;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             cursor: pointer;
-            user-select: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            transition: background 0.1s;
         }
 
         .ctrl-btn:active {
             background-color: #16a085;
-            transform: scale(0.95);
         }
 
         #btn-up { grid-column: 2; grid-row: 1; }
@@ -105,33 +130,65 @@
         #btn-down { grid-column: 2; grid-row: 3; }
 
         .btn-system {
-            background-color: #2ecc71;
+            background-color: #e67e22;
             color: white;
             border: none;
-            padding: 10px 15px;
-            font-size: 14px;
-            border-radius: 5px;
+            padding: 12px 15px;
+            font-size: 15px;
+            border-radius: 6px;
             cursor: pointer;
-            margin: 5px;
             font-weight: bold;
+            width: 100%;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.1);
         }
+
+        .btn-system:hover {
+            background-color: #d35400;
+        }
+
+        /* Screen Overlay for Game Over */
+        #overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(44, 62, 80, 0.95);
+            border-radius: 15px;
+            z-index: 10;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #overlay h2 { margin: 0 0 10px 0; color: #e74c3c; font-size: 28px; }
+        #overlay p { margin: 0 0 20px 0; font-size: 16px; color: #ecf0f1; line-height: 1.4; }
+        #overlay button { max-width: 200px; }
     </style>
 </head>
 <body>
 
-    <h1>🐍 Pinyin Snake Game 🍎</h1>
-    
     <div id="game-container">
-        <div id="target-word-box">
-            ตามหาคำแปลของพินอินนี้:
-            <span id="target-pinyin">กำลังโหลด...</span>
+        <!-- Game Over Screen Overlay -->
+        <div id="overlay">
+            <h2 id="overlay-title">Game Over</h2>
+            <p id="overlay-msg">Reason goes here</p>
+            <button class="btn-system" onclick="resetGame()">Play Again</button>
         </div>
 
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="target-word-box">
+            Eat the correct translation for:
+            <span id="target-pinyin">Loading...</span>
+        </div>
+
+        <div id="board-wrapper">
+            <div id="grid-board"></div>
+        </div>
 
         <div id="score-board">
-            <span id="score">คะแนน: 0</span>
-            <span id="high-score">สูงสุด: 0</span>
+            <span id="score">Score: 0</span>
+            <span id="high-score">High Score: 0</span>
         </div>
 
         <div id="controls">
@@ -141,75 +198,99 @@
             <button class="ctrl-btn" id="btn-down">▼</button>
         </div>
 
-        <button class="btn-system" onclick="resetGame()">เริ่มใหม่</button>
-        <button class="btn-system" style="background-color: #3498db;" onclick="speakCurrentWord()">🔊 ฟังเสียง</button>
+        <button class="btn-system" onclick="resetGame()">Reset Game</button>
     </div>
 
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const gridSize = 20;
-        const tileCount = canvas.width / gridSize;
-
+        const boardSize = 12; 
+        const board = document.getElementById("grid-board");
+        const overlay = document.getElementById("overlay");
+        
+        // Expanded Word Bank (Pinyin -> English)
         const wordBank = [
-            { hanzi: "苹果", pinyin: "píngguǒ", thai: "แอปเปิ้ล" },
-            { hanzi: "香蕉", pinyin: "xiāngjiāo", thai: "กล้วย" },
-            { hanzi: "猫", pinyin: "māo", thai: "แมว" },
-            { hanzi: "狗", pinyin: "gǒu", thai: "สุนัข" },
-            { hanzi: "水", pinyin: "shuǐ", thai: "น้ำ" },
-            { hanzi: "米饭", pinyin: "mǐfàn", thai: "ข้าว" },
-            { hanzi: "老师", pinyin: "lǎoshī", thai: "ครู" },
-            { hanzi: "学生", pinyin: "xuéshēng", thai: "นักเรียน" },
-            { hanzi: "谢谢", pinyin: "xièxie", thai: "ขอบคุณ" },
-            { hanzi: "再见", pinyin: "zàijiàn", thai: "ลาก่อน" }
+            { hanzi: "苹果", pinyin: "píngguǒ", english: "Apple" },
+            { hanzi: "香蕉", pinyin: "xiāngjiāo", english: "Banana" },
+            { hanzi: "猫", pinyin: "māo", english: "Cat" },
+            { hanzi: "狗", pinyin: "gǒu", english: "Dog" },
+            { hanzi: "水", pinyin: "shuǐ", english: "Water" },
+            { hanzi: "米饭", pinyin: "mǐfàn", english: "Rice" },
+            { hanzi: "老师", pinyin: "lǎoshī", english: "Teacher" },
+            { hanzi: "学生", pinyin: "xuéshēng", english: "Student" },
+            { hanzi: "谢谢", pinyin: "xièxie", english: "Thanks" },
+            { hanzi: "再见", pinyin: "zàijiàn", english: "Goodbye" },
+            { hanzi: "火車", pinyin: "huǒchē", english: "Train" },
+            { hanzi: "飛機", pinyin: "fēijī", english: "Plane" },
+            { hanzi: "麵包", pinyin: "miànbāo", english: "Bread" },
+            { hanzi: "咖啡", pinyin: "kāfēi", english: "Coffee" },
+            { hanzi: "茶", pinyin: "chá", english: "Tea" }
         ];
 
         let snake = [];
-        let dx = gridSize;
+        let dx = 1; 
         let dy = 0;
+        let nextDx = 1;
+        let nextDy = 0;
         let apples = [];
         let currentQuestion = {};
         let score = 0;
         let highScore = 0;
-        let gameInterval;
+        let gameLoopInterval;
+        let cells = [];
         let isGameOver = false;
 
-        function speakCurrentWord() {
-            if ('speechSynthesis' in window && currentQuestion.hanzi) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(currentQuestion.hanzi);
-                utterance.lang = 'zh-CN';
-                utterance.rate = 0.75;
-                window.speechSynthesis.speak(utterance);
+        function createBoard() {
+            board.innerHTML = "";
+            cells = [];
+            for (let i = 0; i < boardSize * boardSize; i++) {
+                const cell = document.createElement("div");
+                cell.className = "cell";
+                board.appendChild(cell);
+                cells.push(cell);
             }
         }
 
-        function initGame() {
-            snake = [{x: 160, y: 200}, {x: 140, y: 200}, {x: 120, y: 200}];
-            dx = gridSize;
-            dy = 0;
-            score = 0;
-            isGameOver = false;
-            document.getElementById("score").innerText = "คะแนน: " + score;
-            generateQuestion();
+        function draw() {
+            cells.forEach(cell => {
+                cell.className = "cell";
+                cell.innerText = "";
+            });
+
+            apples.forEach(apple => {
+                const index = apple.y * boardSize + apple.x;
+                if (cells[index]) {
+                    cells[index].classList.add("apple");
+                    cells[index].innerText = apple.text;
+                }
+            });
+
+            snake.forEach((part, idx) => {
+                const index = part.y * boardSize + part.x;
+                if (cells[index]) {
+                    if (idx === 0) {
+                        cells[index].classList.add("snake-head");
+                        cells[index].innerText = "🐍"; 
+                    } else {
+                        cells[index].classList.add("snake-body");
+                    }
+                }
+            });
         }
 
         function generateQuestion() {
             const randomIndex = Math.floor(Math.random() * wordBank.length);
             currentQuestion = wordBank[randomIndex];
             document.getElementById("target-pinyin").innerText = `${currentQuestion.pinyin} (${currentQuestion.hanzi})`;
-            setTimeout(speakCurrentWord, 200);
 
             let wrongOptions = [];
             while(wrongOptions.length < 2) {
-                let wrongWord = wordBank[Math.floor(Math.random() * wordBank.length)].thai;
-                if(wrongWord !== currentQuestion.thai && !wrongOptions.includes(wrongWord)) {
+                let wrongWord = wordBank[Math.floor(Math.random() * wordBank.length)].english;
+                if(wrongWord !== currentQuestion.english && !wrongOptions.includes(wrongWord)) {
                     wrongOptions.push(wrongWord);
                 }
             }
 
             let answers = [
-                { text: currentQuestion.thai, isCorrect: true },
+                { text: currentQuestion.english, isCorrect: true },
                 { text: wrongOptions[0], isCorrect: false },
                 { text: wrongOptions[1], isCorrect: false }
             ];
@@ -218,75 +299,9 @@
             apples = [];
             for(let i=0; i<3; i++) {
                 let appleX, appleY, overlap;
+                let attempts = 0;
                 do {
                     overlap = false;
-                    appleX = Math.floor(Math.random() * tileCount) * gridSize;
-                    appleY = Math.floor(Math.random() * tileCount) * gridSize;
-                    for(let part of snake) { if(part.x === appleX && part.y === appleY) overlap = true; }
-                    for(let app of apples) { if(app.x === appleX && app.y === appleY) overlap = true; }
-                } while(overlap);
-
-                apples.push({ x: appleX, y: appleY, text: answers[i].text, isCorrect: answers[i].isCorrect });
-            }
-        }
-
-        function main() {
-            if (isGameOver) return;
-            if (hasGameEnded()) {
-                isGameOver = true;
-                alert("เกมจบแล้ว! ชนกำแพงหรือชนตัวเอง");
-                if(score > highScore) { highScore = score; document.getElementById("high-score").innerText = "สูงสุด: " + highScore; }
-                return;
-            }
-            clearCanvas();
-            drawApples();
-            moveSnake();
-            drawSnake();
-            checkAppleCollision();
-        }
-
-        function clearCanvas() { ctx.fillStyle = "#2e3d49"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-        
-        function drawSnake() {
-            snake.forEach((part, index) => {
-                ctx.fillStyle = index === 0 ? '#27ae60' : '#2ecc71';
-                ctx.fillRect(part.x, part.y, gridSize, gridSize);
-            });
-        }
-
-        function moveSnake() {
-            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
-            snake.unshift(head);
-            snake.pop();
-        }
-
-        function drawApples() {
-            apples.forEach(apple => {
-                ctx.fillStyle = "#e74c3c";
-                ctx.beginPath();
-                ctx.arc(apple.x + gridSize/2, apple.y + gridSize/2, gridSize/2 - 2, 0, 2 * Math.PI);
-                ctx.fill();
-
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 12px Arial";
-                ctx.textAlign = "center";
-                ctx.fillText(apple.text, apple.x + gridSize/2, apple.y - 4);
-            });
-        }
-
-        function checkAppleCollision() {
-            const head = snake[0];
-            apples.forEach((apple) => {
-                if (head.x === apple.x && head.y === apple.y) {
-                    if (apple.isCorrect) {
-                        score += 10;
-                        document.getElementById("score").innerText = "คะแนน: " + score;
-                        snake.push({ ...snake[snake.length - 1] });
-                        generateQuestion();
-                    } else {
-                        isGameOver = true;
-                        alert(`กินผิด! คำตอบที่ถูกคือ "${currentQuestion.thai}"`);
-                        if(score > highScore) { highScore = score; document.getElementById("high-score").innerText = "สูงสุด: " + highScore; }
-                    }
-                }
-        
+                    appleX = Math.floor(Math.random() * boardSize);
+                    appleY = Math.floor(Math.random() * boardSize);
+      
