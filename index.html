@@ -2,291 +2,466 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pinyin Snake Game - เกมงูฝึกศัพท์จีน</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RETRO QUEST: Ubon & Amnat</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for 8-bit sound effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Fonts for Retro Style -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Chakra+Petch:wght@400;700&display=swap" rel="stylesheet">
+    
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin: 0;
-            padding: 10px;
-            touch-action: manipulation;
+        body { 
+            font-family: 'Chakra Petch', sans-serif; 
+            background-color: #0b071a;
+            color: #ffffff;
+            image-rendering: pixelated;
         }
 
-        h1 {
-            color: #333;
-            margin: 5px 0;
-            font-size: 24px;
+        .pixel-font {
+            font-family: 'Press Start 2P', monospace;
         }
 
-        #game-container {
+        /* Scanlines and CRT effect overlay */
+        .crt::after {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            aspect-ratio: auto;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        /* Retro double borders simulating NES graphics */
+        .pixel-border-outer {
+            border: 4px solid #fff;
+            box-shadow: 0 0 0 4px #000, 6px 6px 0px 0px #1e1135;
+        }
+
+        .pixel-border-inner {
+            border: 4px solid #000;
+        }
+
+        /* 3D Pressed Button Effect */
+        .pixel-btn {
             position: relative;
-            background-color: #fff;
-            padding: 15px;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            text-align: center;
-            max-width: 420px;
-            width: 100%;
-            box-sizing: border-box;
+            border: 4px solid #000;
+            box-shadow: 4px 4px 0px 0px #000;
+            transition: all 0.05s;
         }
 
-        #target-word-box {
-            font-size: 18px;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 10px;
-            padding: 10px;
-            background-color: #ecf0f1;
-            border-radius: 8px;
-            border-left: 5px solid #e74c3c;
+        .pixel-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px 0px #000;
         }
 
-        #target-pinyin {
-            color: #e74c3c;
-            font-size: 24px;
-            display: block;
-            margin-top: 5px;
+        /* Custom Pixel Animation */
+        @keyframes pixel-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .hero-bounce {
+            animation: pixel-bounce 1s infinite steps(2);
         }
 
-        canvas {
-            background-color: #2e3d49;
-            border-radius: 8px;
-            display: block;
-            margin: 0 auto;
-            max-width: 100%;
-            height: auto;
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
         }
-
-        #score-board {
-            display: flex;
-            justify-content: space-between;
-            margin: 10px 0;
-            font-size: 16px;
-            font-weight: bold;
-            color: #555;
-        }
-
-        #controls {
-            display: grid;
-            grid-template-columns: repeat(3, 60px);
-            grid-template-rows: repeat(3, 60px);
-            gap: 10px;
-            justify-content: center;
-            margin: 15px 0 5px 0;
-        }
-
-        .ctrl-btn {
-            background-color: #34495e;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            font-size: 24px;
-            font-weight: bold;
-            cursor: pointer;
-            user-select: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
-
-        .ctrl-btn:active {
-            background-color: #16a085;
-            transform: scale(0.95);
-        }
-
-        #btn-up { grid-column: 2; grid-row: 1; }
-        #btn-left { grid-column: 1; grid-row: 2; }
-        #btn-right { grid-column: 3; grid-row: 2; }
-        #btn-down { grid-column: 2; grid-row: 3; }
-
-        .btn-system {
-            background-color: #2ecc71;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            font-size: 14px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 5px;
-            font-weight: bold;
+        .scanline {
+            animation: scanline 8s linear infinite;
         }
     </style>
 </head>
-<body>
+<body class="p-4 md:p-8 min-h-screen crt flex items-center justify-center bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1d103c] via-[#0b071a] to-[#04020a]">
 
-    <h1>🐍 Pinyin Snake Game 🍎</h1>
-    
-    <div id="game-container">
-        <div id="target-word-box">
-            ตามหาคำแปลของพินอินนี้:
-            <span id="target-pinyin">กำลังโหลด...</span>
+    <!-- Scanline Effect -->
+    <div class="fixed inset-0 pointer-events-none overflow-hidden z-50">
+        <div class="w-full h-1 bg-white/5 scanline"></div>
+    </div>
+
+    <!-- Main Game Container -->
+    <div id="app" class="w-full max-w-xl">
+        
+        <!-- Header Arcade Cabinet Top -->
+        <header class="text-center mb-6">
+            <h1 class="pixel-font text-xl md:text-2xl text-yellow-400 tracking-widest flex items-center justify-center gap-2 drop-shadow-[0_4px_0_rgba(0,0,0,1)]">
+                👾 RETRO QUEST 👾
+            </h1>
+            <p class="text-xs text-emerald-400 pixel-font mt-2 animate-pulse">[ INSERT COIN TO START ]</p>
+        </header>
+
+        <!-- SCREEN 1: LUCKY LOTTERY SCREEN (1-40) -->
+        <div id="lottery-screen" class="pixel-border-outer bg-[#180e29] rounded-none p-6 text-center">
+            <div class="pixel-border-inner bg-[#24153e] p-4 md:p-8">
+                <h2 class="pixel-font text-[#ff0055] text-sm md:text-md mb-6 leading-relaxed">SELECT STARTING<br>COORDINATE</h2>
+                
+                <!-- Ticket visual container -->
+                <div class="bg-amber-100 border-4 border-dashed border-amber-600 p-6 my-6 inline-block w-full max-w-xs transform -rotate-1 relative overflow-hidden">
+                    <div class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#24153e]"></div>
+                    <div class="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[#24153e]"></div>
+                    <p class="text-stone-700 font-bold tracking-widest text-xs mb-1">LUCKY TRAVEL TICKET</p>
+                    <div id="lucky-number" class="pixel-font text-5xl md:text-6xl text-stone-900 py-4 select-none">??</div>
+                    <p class="text-stone-500 text-[10px]">VERIFYING DESTINATION...</p>
+                </div>
+
+                <button onclick="startLottery()" id="lottery-btn" class="pixel-btn w-full bg-[#4cd137] text-black font-bold py-4 uppercase text-sm tracking-wider hover:bg-[#44bd32] block">
+                    [ START SEQUENCE ]
+                </button>
+                <p class="text-[11px] text-stone-400 mt-4 leading-relaxed">💡 *เสียงดนตรี 8-Bit จะดังขึ้นเมื่อระบบจำลองการสุ่มพิกัดนำทาง!</p>
+            </div>
         </div>
 
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <!-- SCREEN 2: RETRO QUIZ PANEL -->
+        <div id="quiz-screen" class="pixel-border-outer bg-[#180e29] rounded-none p-6 hidden">
+            <div class="pixel-border-inner bg-[#24153e] p-4 flex flex-col gap-4">
+                
+                <!-- Status Indicators / Game HUD -->
+                <div class="flex justify-between items-center text-xs border-b-4 border-black pb-3">
+                    <div class="flex items-center gap-1">
+                        <span class="pixel-font text-rose-500 text-[10px]">HP:</span>
+                        <div id="heart-container" class="flex gap-1">
+                            <span class="text-rose-500">❤️</span>
+                            <span class="text-rose-500">❤️</span>
+                            <span class="text-rose-500">❤️</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="pixel-font text-emerald-400 text-[10px]" id="progress-text">STAGE 01/10</span>
+                    </div>
+                </div>
 
-        <div id="score-board">
-            <span id="score">คะแนน: 0</span>
-            <span id="high-score">สูงสุด: 0</span>
+                <!-- Custom Graphic Segment: Avatar Guide -->
+                <div class="flex items-center gap-4 bg-black/40 p-3 border-2 border-[#120824]">
+                    <div class="w-14 h-14 bg-[#441f7d] border-2 border-white flex items-center justify-center text-3xl hero-bounce shrink-0" id="hero-avatar">
+                        🤠
+                    </div>
+                    <div class="text-xs">
+                        <p class="text-[#fccc12] font-bold">GUIDE BOT:</p>
+                        <p class="text-slate-300" id="guide-bubble">"เดินทางไปสู่พิกัดถัดไปกันเลยคู่หู!"</p>
+                    </div>
+                </div>
+
+                <!-- XP Bar / Progress representation -->
+                <div class="w-full bg-black/60 p-1 border-2 border-[#4b3576]">
+                    <div id="progress-bar" class="h-3 bg-[#00ffcc] transition-all duration-300" style="width: 10%"></div>
+                </div>
+                
+                <!-- Question Section -->
+                <div class="bg-black/40 p-4 border-2 border-black/80 my-2">
+                    <h2 id="question-text" class="text-md md:text-lg font-bold text-white leading-relaxed"></h2>
+                </div>
+
+                <!-- Options grid -->
+                <div id="options-container" class="grid grid-cols-1 gap-3"></div>
+                
+                <!-- Feedback Box -->
+                <div id="feedback" class="mt-2 p-4 border-4 hidden"></div>
+                
+                <!-- Next Button -->
+                <button id="next-btn" onclick="nextQuestion()" class="pixel-btn w-full py-3 bg-[#00e8c6] text-black font-bold uppercase text-sm tracking-wider hover:bg-[#00c9aa] hidden">
+                    NEXT LEVEL ▶
+                </button>
+            </div>
         </div>
 
-        <div id="controls">
-            <button class="ctrl-btn" id="btn-up">▲</button>
-            <button class="ctrl-btn" id="btn-left">◀</button>
-            <button class="ctrl-btn" id="btn-right">▶</button>
-            <button class="ctrl-btn" id="btn-down">▼</button>
-        </div>
+        <!-- SCREEN 3: GAME OVER / VICTORY SCREEN -->
+        <div id="result-screen" class="pixel-border-outer bg-[#180e29] rounded-none p-6 text-center hidden">
+            <div class="pixel-border-inner bg-[#24153e] p-6">
+                <h2 id="result-title" class="pixel-font text-xl mb-2 text-[#fccc12]">MISSION END</h2>
+                
+                <!-- Retro Game Trophy or Death Icon -->
+                <div id="result-graphic" class="text-6xl my-6 animate-bounce">🏆</div>
 
-        <button class="btn-system" onclick="resetGame()">เริ่มใหม่</button>
-        <button class="btn-system" style="background-color: #3498db;" onclick="speakCurrentWord()">🔊 ฟังเสียง</button>
+                <div class="bg-black/50 p-4 border-2 border-dashed border-white/20 mb-6">
+                    <p class="text-xs text-stone-400 mb-1 pixel-font">FINAL SCORE</p>
+                    <div id="score-text" class="pixel-font text-4xl text-white font-black">0/10</div>
+                </div>
+
+                <!-- Dynamic Retro-Style Meme Card -->
+                <div id="meme-container" class="p-4 border-4 border-black bg-black/40 text-left text-sm my-6 rounded-none"></div>
+
+                <!-- Restart Button -->
+                <button onclick="location.reload()" class="pixel-btn w-full py-4 bg-[#f1f2f6] text-black font-bold uppercase text-sm tracking-wider hover:bg-stone-300 block">
+                    🔄 REPLAY GAME
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const gridSize = 20;
-        const tileCount = canvas.width / gridSize;
-
-        const wordBank = [
-            { hanzi: "苹果", pinyin: "píngguǒ", thai: "แอปเปิ้ล" },
-            { hanzi: "香蕉", pinyin: "xiāngjiāo", thai: "กล้วย" },
-            { hanzi: "猫", pinyin: "māo", thai: "แมว" },
-            { hanzi: "狗", pinyin: "gǒu", thai: "สุนัข" },
-            { hanzi: "水", pinyin: "shuǐ", thai: "น้ำ" },
-            { hanzi: "米饭", pinyin: "mǐfàn", thai: "ข้าว" },
-            { hanzi: "老师", pinyin: "lǎoshī", thai: "ครู" },
-            { hanzi: "学生", pinyin: "xuéshēng", thai: "นักเรียน" },
-            { hanzi: "谢谢", pinyin: "xièxie", thai: "ขอบคุณ" },
-            { hanzi: "再见", pinyin: "zàijiàn", thai: "ลาก่อน" }
+        // Quiz Database
+        const quizData = [
+            { q: "🎰 สามพันโบก ตั้งอยู่ที่อำเภอใด?", a: ["โพธิ์ไทร", "โขงเจียม", "สิรินธร", "เขมราฐ"], correct: 0, exp: "ตำแหน่ง: อ.โพธิ์ไทร 📍 แกรนด์แคนยอนแห่งอีสานพิกัดหินสามพันแอ่ง!" },
+            { q: "🌅 ผาแต้ม จุดชมพระอาทิตย์ขึ้นก่อนใครในประเทศ อยู่ที่อำเภอใด?", a: ["ดอนมดแดง", "เขื่องใน", "โขงเจียม", "ม่วงสามสิบ"], correct: 2, exp: "ตำแหน่ง: อ.โขงเจียม ☀️ จุดรับแสงแรกของสยามประเทศ!" },
+            { q: "🛕 วัดพระธาตุหนองบัว เจดีย์พุทธคยาจำลอง ตั้งอยู่ที่อำเภอใด?", a: ["วารินชำราบ", "เมืองอุบลราชธานี", "เดชอุดม", "พิบูลมังสาหาร"], correct: 1, exp: "ตำแหน่ง: อ.เมืองอุบลฯ 🕌 ยิ่งใหญ่อลังการคู่ขวัญเมืองอุบลฯ" },
+            { q: "🌊 แก่งสะพือ ที่เที่ยวพักผ่อนคลายร้อนริมแม่น้ำมูล อยู่ที่อำเภอใด?", a: ["ตาลสุม", "ดอนมดแดง", "พิบูลมังสาหาร", "สำโรง"], correct: 2, exp: "ตำแหน่ง: อ.พิบูลมังสาหาร 💧 สายน้ำกระเซ็นโขดหินใต้น้ำงดงาม" },
+            { q: "🧘 วัดถ้ำแสงเพชร สถานที่ปฏิบัติธรรมสงบร่มรื่น อยู่ที่จังหวัดใด?", a: ["อุบลราชธานี", "อำนาจเจริญ", "ยโสธร", "ศรีสะเกษ"], correct: 1, exp: "ตำแหน่ง: จ.อำนาจเจริญ ✨ ถ้ำศักดิ์สิทธิ์สไตล์ธรรมชาติกบดาน" },
+            { q: "✨ วัดพระเหลาเทพนิมิต พระพุทธรูปงดงามดั่งเทพนิมิต อยู่ที่อำเภอใด?", a: ["หัวตะพาน", "ชานุมาน", "พนา", "ปทุมราชวงศา"], correct: 2, exp: "ตำแหน่ง: อ.พนา จ.อำนาจเจริญ 🏮 พระพุทธรูปเก่าแก่ล้ำค่าของอีสาน" },
+            { q: "🏖️ พัทยาน้อย หรือ ทะเลอีสานพักผ่อนหย่อนใจ ตั้งอยู่ที่อำเภอใด?", a: ["โขงเจียม", "สิรินธร", "นาตาล", "ตระการพืชผล"], correct: 1, exp: "ตำแหน่ง: อ.สิรินธร 🏝️ แหล่งปักสมอพักผ่อนริมอ่างเก็บน้ำเขื่อนสิรินธร" },
+            { q: "🏕️ อ่างเก็บน้ำห้วยสีโท สถานที่พักผ่อนเล่นน้ำชิวๆ อยู่ที่จังหวัดใด?", a: ["อุบลราชธานี", "อำนาจเจริญ", "ร้อยเอ็ด", "ยโสธร"], correct: 1, exp: "ตำแหน่ง: อ.เมือง จ.อำนาจเจริญ 🏕️ แหล่งกักเก็บน้ำอุดมสมบูรณ์" },
+            { q: "🌳 วัดป่านานาชาติ วัดป่าสายวิปัสสนานานาชาติ อยู่ที่อำเภอใด?", a: ["วารินชำราบ", "เมืองอุบลราชธานี", "เขื่องใน", "ตาลสุม"], correct: 0, exp: "ตำแหน่ง: อ.วารินชำราบ 🧭 สถานที่ฝึกสมาธิของชาวต่างชาติทั่วโลก" },
+            { q: "🗻 ถ้ำคูหาสวรรค์ ที่ประดิษฐานฆ้องใหญ่และวิวแม่น้ำโขง อยู่ที่อำเภอใด?", a: ["สิรินธร", "โขงเจียม", "ม่วงสามสิบ", "เขมราฐ"], correct: 1, exp: "ตำแหน่ง: อ.โขงเจียม 🌿 อากาศร่มรื่น วิวทิวทัศน์เห็นไกลถึงชายแดนลาว" }
         ];
 
-        let snake = [];
-        let dx = gridSize;
-        let dy = 0;
-        let apples = [];
-        let currentQuestion = {};
+        let currentQuestion = 0;
         let score = 0;
-        let highScore = 0;
-        let gameInterval;
-        let isGameOver = false;
+        let isAnswered = false;
+        let health = 3;
 
-        function speakCurrentWord() {
-            if ('speechSynthesis' in window && currentQuestion.hanzi) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(currentQuestion.hanzi);
-                utterance.lang = 'zh-CN';
-                utterance.rate = 0.75;
-                window.speechSynthesis.speak(utterance);
+        // Custom Sound Effects using Web Audio API via Tone.js
+        const synth = new Tone.Synth({
+            oscillator: { type: "square" } // Vintage 8-bit square wave
+        }).toDestination();
+
+        // Play short retro sounds
+        function playSound(type) {
+            try {
+                if (Tone.context.state !== 'running') {
+                    Tone.start();
+                }
+                const now = Tone.now();
+                if (type === 'tick') {
+                    // Quick high pitch tick for lottery roll
+                    synth.triggerAttackRelease("A5", "0.05", now);
+                } else if (type === 'correct') {
+                    // Vintage success arpeggio
+                    synth.triggerAttackRelease("C5", "0.1", now);
+                    synth.triggerAttackRelease("E5", "0.1", now + 0.1);
+                    synth.triggerAttackRelease("G5", "0.1", now + 0.2);
+                    synth.triggerAttackRelease("C6", "0.2", now + 0.3);
+                } else if (type === 'wrong') {
+                    // Sad buzz sound
+                    synth.triggerAttackRelease("F3", "0.15", now);
+                    synth.triggerAttackRelease("C3", "0.3", now + 0.15);
+                } else if (type === 'gameover') {
+                    // Downward game over slide
+                    synth.triggerAttackRelease("A3", "0.2", now);
+                    synth.triggerAttackRelease("F3", "0.2", now + 0.2);
+                    synth.triggerAttackRelease("D3", "0.4", now + 0.4);
+                } else if (type === 'victory') {
+                    // Happy level complete ditty
+                    synth.triggerAttackRelease("G5", "0.1", now);
+                    synth.triggerAttackRelease("C6", "0.1", now + 0.15);
+                    synth.triggerAttackRelease("E6", "0.1", now + 0.3);
+                    synth.triggerAttackRelease("G6", "0.4", now + 0.45);
+                }
+            } catch (e) {
+                console.log("Audio not enabled yet: " + e);
             }
         }
 
-        function initGame() {
-            snake = [{x: 160, y: 200}, {x: 140, y: 200}, {x: 120, y: 200}];
-            dx = gridSize;
-            dy = 0;
-            score = 0;
-            isGameOver = false;
-            document.getElementById("score").innerText = "คะแนน: " + score;
-            generateQuestion();
+        function startLottery() {
+            // Initialize Tone Audio context on user interaction
+            Tone.start();
+            
+            const btn = document.getElementById('lottery-btn');
+            const numEl = document.getElementById('lucky-number');
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            
+            let counter = 0;
+            const finalRollNumber = Math.floor(Math.random() * 40) + 1;
+            
+            const interval = setInterval(() => {
+                const randomNum = Math.floor(Math.random() * 40) + 1;
+                numEl.innerText = randomNum.toString().padStart(2, '0');
+                playSound('tick');
+                counter++;
+                
+                if (counter > 15) {
+                    clearInterval(interval);
+                    numEl.innerText = finalRollNumber.toString().padStart(2, '0');
+                    playSound('correct');
+                    
+                    setTimeout(() => {
+                        document.getElementById('lottery-screen').classList.add('hidden');
+                        document.getElementById('quiz-screen').classList.remove('hidden');
+                        renderQuestion();
+                    }, 1000);
+                }
+            }, 100);
         }
 
-        function generateQuestion() {
-            const randomIndex = Math.floor(Math.random() * wordBank.length);
-            currentQuestion = wordBank[randomIndex];
-            document.getElementById("target-pinyin").innerText = `${currentQuestion.pinyin} (${currentQuestion.hanzi})`;
-            setTimeout(speakCurrentWord, 200);
+        function renderQuestion() {
+            isAnswered = false;
+            const q = quizData[currentQuestion];
+            const progress = (currentQuestion / quizData.length) * 100;
+            
+            // HUD updates
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+            document.getElementById('progress-text').innerText = `STAGE ${(currentQuestion + 1).toString().padStart(2, '0')}/10`;
+            document.getElementById('question-text').innerText = q.q;
+            document.getElementById('feedback').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+            document.getElementById('next-btn').innerText = "NEXT LEVEL ▶";
+            
+            // Guide avatar dialog random greetings based on stage progress
+            const botQuotes = [
+                "มุ่งมั่นเข้าไว้! อนาคตนักท่องเที่ยวระดับโปรอยู่ไม่ไกล!",
+                "รู้ไหมเนี่ยพิกัดอำเภอไหนในอุบล-อำนาจเจริญ?",
+                "ตื่นเต้นสุดๆ เลย ลุยกันต่อ!",
+                "ตอบถูกรับเหรียญรางวัลพิกเซลไปเลย!",
+                "อย่าลืมอ่านข้อมูลเหตุผลกันด้วยนะน้องๆ ม.1!"
+            ];
+            document.getElementById('guide-bubble').innerText = `"${botQuotes[currentQuestion % botQuotes.length]}"`;
+            
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            // Render 4 answer choices with vintage gaming styling
+            q.a.forEach((opt, idx) => {
+                const button = document.createElement('button');
+                button.className = 'w-full text-left p-4 bg-[#311c52] hover:bg-[#3d2466] active:bg-black border-4 border-black text-slate-200 text-sm font-bold flex justify-between items-center transition-colors pixel-btn';
+                button.innerHTML = `<span><span class="text-amber-400 mr-2">[ ${String.fromCharCode(65 + idx)} ]</span> ${opt}</span> <span class="pixel-font text-stone-500 text-[10px]">▶</span>`;
+                button.onclick = () => checkAnswer(idx, button);
+                container.appendChild(button);
+            });
+        }
 
-            let wrongOptions = [];
-            while(wrongOptions.length < 2) {
-                let wrongWord = wordBank[Math.floor(Math.random() * wordBank.length)].thai;
-                if(wrongWord !== currentQuestion.thai && !wrongOptions.includes(wrongWord)) {
-                    wrongOptions.push(wrongWord);
+        function checkAnswer(idx, clickedButton) {
+            if (isAnswered) return;
+            isAnswered = true;
+            
+            const q = quizData[currentQuestion];
+            const feedback = document.getElementById('feedback');
+            const avatar = document.getElementById('hero-avatar');
+            const guideText = document.getElementById('guide-bubble');
+            
+            // Disable other buttons
+            const buttons = document.querySelectorAll('#options-container button');
+            buttons.forEach(btn => btn.style.opacity = '0.5');
+            clickedButton.style.opacity = '1.0';
+
+            if (idx === q.correct) {
+                // Correct answer sequence
+                score++;
+                playSound('correct');
+                avatar.innerText = "🤠";
+                avatar.classList.add('animate-bounce');
+                setTimeout(() => avatar.classList.remove('animate-bounce'), 1000);
+                guideText.innerText = `"ถูกต้อง! คุณได้รับพิกัดความลับถัดไปแล้ว!"`;
+
+                feedback.innerHTML = `
+                    <p class="pixel-font text-[#4cd137] text-xs mb-2">💥 CORRECT! +100XP</p>
+                    <p class="text-sm text-slate-200 font-bold">${q.exp}</p>
+                `;
+                feedback.className = "mt-2 p-4 border-4 border-dashed border-[#4cd137] bg-[#4cd137]/10";
+                clickedButton.classList.remove('bg-[#311c52]');
+                clickedButton.classList.add('bg-[#4cd137]', 'text-black');
+            } else {
+                // Incorrect answer sequence
+                playSound('wrong');
+                avatar.innerText = "😭";
+                health--;
+                updateHearts();
+                guideText.innerText = `"อุ๊ย! น่าเสียดาย ตอบอันนี้ไม่ถูกต้องนะ"`;
+
+                feedback.innerHTML = `
+                    <p class="pixel-font text-[#e84118] text-xs mb-2">💀 SYSTEM ERROR! -HP</p>
+                    <p class="text-sm text-slate-200 font-bold">${q.exp}</p>
+                `;
+                feedback.className = "mt-2 p-4 border-4 border-dashed border-[#e84118] bg-[#e84118]/10";
+                clickedButton.classList.remove('bg-[#311c52]');
+                clickedButton.classList.add('bg-[#e84118]', 'text-white');
+                
+                // Show the correct answer button in yellow
+                buttons[q.correct].classList.remove('bg-[#311c52]');
+                buttons[q.correct].classList.add('bg-[#fccc12]', 'text-black', 'opacity-100');
+            }
+            
+            if (health <= 0) {
+                document.getElementById('next-btn').innerText = "VIEW MISSION REPORT 💀";
+                guideText.innerText = `"อึ๋ย! พลังชีวิตหมดเกลี้ยงซะแล้วสิสหาย มะ...ไม่ไหวแล้ว..."`;
+            }
+            
+            feedback.classList.remove('hidden');
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        // Live HP system indicator updating
+        function updateHearts() {
+            const hContainer = document.getElementById('heart-container');
+            let heartHTML = '';
+            for (let i = 0; i < 3; i++) {
+                if (i < health) {
+                    heartHTML += '<span class="text-rose-500 text-lg">❤️</span>';
+                } else {
+                    heartHTML += '<span class="text-stone-600 text-lg">🖤</span>';
                 }
             }
-
-            let answers = [
-                { text: currentQuestion.thai, isCorrect: true },
-                { text: wrongOptions[0], isCorrect: false },
-                { text: wrongOptions[1], isCorrect: false }
-            ];
-            answers.sort(() => Math.random() - 0.5);
-
-            apples = [];
-            for(let i=0; i<3; i++) {
-                let appleX, appleY, overlap;
-                do {
-                    overlap = false;
-                    appleX = Math.floor(Math.random() * tileCount) * gridSize;
-                    appleY = Math.floor(Math.random() * tileCount) * gridSize;
-                    for(let part of snake) { if(part.x === appleX && part.y === appleY) overlap = true; }
-                    for(let app of apples) { if(app.x === appleX && app.y === appleY) overlap = true; }
-                } while(overlap);
-
-                apples.push({ x: appleX, y: appleY, text: answers[i].text, isCorrect: answers[i].isCorrect });
-            }
+            hContainer.innerHTML = heartHTML;
         }
 
-        function main() {
-            if (isGameOver) return;
-            if (hasGameEnded()) {
-                isGameOver = true;
-                alert("เกมจบแล้ว! ชนกำแพงหรือชนตัวเอง");
-                if(score > highScore) { highScore = score; document.getElementById("high-score").innerText = "สูงสุด: " + highScore; }
+        function nextQuestion() {
+            if (health <= 0) {
+                showResults(true);
                 return;
             }
-            clearCanvas();
-            drawApples();
-            moveSnake();
-            drawSnake();
-            checkAppleCollision();
+            currentQuestion++;
+            if (currentQuestion < quizData.length) {
+                renderQuestion();
+            } else {
+                showResults(false);
+            }
         }
 
-        function clearCanvas() { ctx.fillStyle = "#2e3d49"; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-        
-        function drawSnake() {
-            snake.forEach((part, index) => {
-                ctx.fillStyle = index === 0 ? '#27ae60' : '#2ecc71';
-                ctx.fillRect(part.x, part.y, gridSize, gridSize);
-            });
+        function showResults(isDead = false) {
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('result-screen').classList.remove('hidden');
+            
+            const titleEl = document.getElementById('result-title');
+            const graphicEl = document.getElementById('result-graphic');
+            const memeContainer = document.getElementById('meme-container');
+            const scoreText = document.getElementById('score-text');
+            
+            scoreText.innerText = `${score}/10`;
+            
+            // Dynamic Memes and custom retro ranking system
+            if (isDead) {
+                playSound('gameover');
+                titleEl.innerText = "☠️ MISSION FAILED ☠️";
+                titleEl.className = "pixel-font text-xl mb-2 text-[#e84118]";
+                graphicEl.innerText = "🪦";
+                
+                const deadMemes = [
+                    "💔 [ RANK: หัวใจสลายคาด่านท่องเที่ยว ]<br><br>พลังชีวิตหมดเกลี้ยง! โดนตอบผิดสกัดค่า HP จนกลายเป็นศูนย์คาด่านควิซ! แวะไปทบทวนตำราท่องเที่ยวอุบล-อำนาจเจริญใหม่ แล้วค่อยกลับมาแก้มือนะ!",
+                    "🩸 [ RANK: วิญญาณเร่ร่อนลุ่มแม่น้ำโขง ]<br><br>ตอบผิดบ่อยจนหัวใจหมด 3 ดวงซะแล้ว! ตอนนี้ตัวตนของน้องกลายเป็นรูปปั้นหินเฝ้าสามพันโบกไปเรียบร้อย ไปเติมพลังชีวิตแล้วลองใหม่อีกรอบเดี๋ยวนี้!"
+                ];
+                memeContainer.innerHTML = deadMemes[Math.floor(Math.random() * deadMemes.length)];
+                memeContainer.className = "p-4 border-4 border-[#e84118] bg-[#e84118]/10 text-[#ff4d4d] text-center font-bold leading-relaxed";
+                scoreText.innerText = `${score}/10 (HP ❌ หมดหลอด)`;
+            } else if (score < 5) {
+                playSound('gameover');
+                titleEl.innerText = "☠️ GAME OVER ☠️";
+                titleEl.className = "pixel-font text-xl mb-2 text-[#e84118]";
+                graphicEl.innerText = "💀";
+                
+                const lowerMemes = [
+                    "🐌 [ RANK: ทากน้อยกะดึ๊บหลงทิศ ]<br><br>โอ้มายก็อด! น้องๆ หลงทางอยู่ในสามพันโบก หาทางกลับบ้านไม่เจอแล้ว! ชาวประมงแม่น้ำมูลส่ายหัวรัวๆ เลยนะน่ะ! ไปรีดวิชาด่วนเลย!",
+                    "🤡 [ RANK: ตัวตลกประจำรถทัวร์ ]<br><br>คะแนนแค่นี้ขนาดคุณนกเงือกผาแต้มยังบินมาเคาะหัวเลยนะ! ลุยใหม่อีกรอบ ไปแก้ตัวด่วนเจ้าหนู!",
+                    "🦖 [ RANK: ฟอสซิลเฝ้าแก่ง ]<br><br>น้องกำลังวิญญาณหลุดลอยอยู่ที่อุทยานแห่งชาติแน่ๆ! อากาศอุบลหนาวหรือร้อนเกินไปจนหัวตื้อใช่ไหม ลองเริ่มพิกัดเดินทางใหม่อีกรอบสิ!"
+                ];
+                memeContainer.innerHTML = lowerMemes[Math.floor(Math.random() * lowerMemes.length)];
+                memeContainer.className = "p-4 border-4 border-[#e84118] bg-[#e84118]/10 text-[#ff4d4d] text-center font-bold leading-relaxed";
+            } else {
+                playSound('victory');
+                titleEl.innerText = "🏆 QUEST COMPLETED! 🏆";
+                titleEl.className = "pixel-font text-xl mb-2 text-[#4cd137]";
+                graphicEl.innerText = "👑";
+                
+                const highMemes = [
+                    "🚀 [ RANK: เนวิเกเตอร์อุบล-อำนาจขั้นเทพ ]<br><br>ยอดเยี่ยมกระเทียมดอง! นำทางเพื่อนๆ ไปเที่ยวได้ไม่ต้องกลัวหลง! แม่น้ำโขงแม่น้ำมูลพร้อมเปิดทางให้เทพเจ้าแห่งการเดินทางแล้ว!",
+                    "🦁 [ RANK: ราชาแห่งที่เที่ยวแดนอีสาน ]<br><br>สุดยอดวิชาสังคมศึกษา ม.1! ตอบแบบนี้แอดมินเพจท่องเที่ยวอุบลต้องเรียกไปรับรางวัลแล้วครับคุณน้อง!"
+                ];
+                memeContainer.innerHTML = highMemes[Math.floor(Math.random() * highMemes.length)];
+                memeContainer.className = "p-4 border-4 border-[#4cd137] bg-[#4cd137]/10 text-[#00ffcc] text-center font-bold leading-relaxed";
+            }
         }
-
-        function moveSnake() {
-            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
-            snake.unshift(head);
-            snake.pop();
-        }
-
-        function drawApples() {
-            apples.forEach(apple => {
-                ctx.fillStyle = "#e74c3c";
-                ctx.beginPath();
-                ctx.arc(apple.x + gridSize/2, apple.y + gridSize/2, gridSize/2 - 2, 0, 2 * Math.PI);
-                ctx.fill();
-
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 12px Arial";
-                ctx.textAlign = "center";
-                ctx.fillText(apple.text, apple.x + gridSize/2, apple.y - 4);
-            });
-        }
-
-        function checkAppleCollision() {
-            const head = snake[0];
-            apples.forEach((apple) => {
-                if (head.x === apple.x && head.y === apple.y) {
-                    if (apple.isCorrect) {
-                        score += 10;
-                        document.getElementById("score").innerText = "คะแนน: " + score;
-                        snake.push({ ...snake[snake.length - 1] });
-                        generateQuestion();
-                    } else {
-                        isGameOver = true;
-                        alert(`กินผิด! คำตอบที่ถูกคือ "${currentQuestion.thai}"`);
-                        if(score > highScore) { highScore = score; document.getElementById("high-score").innerText = "สูงสุด: " + highScore; }
-                    }
-                }
-        
+    </script>
+</body>
+</html>
